@@ -1,0 +1,68 @@
+version: "2"
+services:
+  mongo1:
+    container_name: mongo1
+    hostname: mongo1
+    image: mongo:5
+    expose:
+      - 27017
+    ports:
+      - 27017:27017
+    networks:
+      - mongo-networks
+    command: mongod --replSet jobreplica
+  mongo2:
+    container_name: mongo2
+    hostname: mongo2
+    image: mongo:5
+    expose:
+      - 27017
+    ports:
+      - 27018:27017
+    networks:
+      - mongo-networks
+    command: mongod --replSet jobreplica
+  mongo3:
+    container_name: mongo3
+    hostname: mongo:5
+    image: mongo:5
+    expose:
+      - 27017
+    ports:
+      - 27019:27017
+    networks:
+      - mongo-networks
+    command: mongod --replSet jobreplica
+  mongoinit:
+    image: mongo:5
+    restart: "no"
+    networks:
+      - mongo-networks
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    command: >
+      mongosh --host mongo1:27017 --eval
+      'config = {
+        "_id": "jobreplica",
+        "members": [
+            {
+              "_id": 0,
+              "host": "mongo1:27017"
+            },
+            {
+              "_id": 1,
+              "host": "mongo2:27017"
+            },
+            {
+              "_id": 2,
+              "host": "mongo3:27017"
+            }
+        ]
+      };
+      rs.initiate(config);
+      '
+networks:
+  mongo-networks:
+    driver: bridge

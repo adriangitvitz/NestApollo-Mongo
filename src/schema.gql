@@ -1,0 +1,43 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type GetUsers {
+  _id: String
+
+  """User description"""
+  description: String
+
+  """Username"""
+  username: String
+}
+
+type Mutation {
+  createUser(userdata: UsersInput!): Usercreated!
+  signIn(userdata: UsersInput!): SignInCredentials!
+}
+
+type Query {
+  users: [GetUsers!]!
+}
+
+"""sigin"""
+type SignInCredentials {
+  accesstoken: String!
+}
+
+type Usercreated {
+  _id: String
+
+  """Status"""
+  status: String!
+
+  """Username"""
+  username: String
+}
+
+input UsersInput {
+  description: String
+  password: String!
+  username: String!
+}
