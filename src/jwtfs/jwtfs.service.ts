@@ -11,24 +11,21 @@ export class JwtfsService {
 		typ: 'JWT',
 	};
 	private readonly secret: string = this.configService.get<string>('jwtsecret');
+	private readonly refresh_id: string = this.configService.get<string>('refreshid'); // 16 char
+	private readonly refresh_iv: string = this.configService.get<string>('refreshiv'); // 32 char
 	private readonly exp_hours: string = this.configService.get<string>('jwtexp');
 	private readonly regex_time_type: RegExp = new RegExp(/(\d+)([h-m])(&|$)/g);
 
+	signwithrefresh(payload: any) {
+		const currrentDate: Date = new Date();
+		const accesstoken = this.generate_accestoken(payload, currrentDate);
+		const refreshtoken = this.generate_refreshtoken(payload, currrentDate);
+		return { accesstoken, refreshtoken };
+	}
+
 	sign(payload: any): string {
 		const currentDate: Date = new Date();
-		const issued_at: number = currentDate.getTime();
-		const expires: number = this.generate_expiresin(currentDate);
-
-		payload = this.clean_before(payload);
-		const payload_data = { ...payload, exp: expires, ist: issued_at };
-		const encodedheader: string = this.encodetobase64(this.header);
-		const encodedpayload: string = this.encodetobase64(payload_data);
-		const signature: string = this.create_signature(
-			encodedheader,
-			encodedpayload,
-		);
-		const jwt = `${encodedheader}.${encodedpayload}.${signature}`;
-		return jwt;
+		return this.generate_accestoken(payload, currentDate);
 	}
 
 	isvalid(jwt: string): boolean {
@@ -99,6 +96,47 @@ export class JwtfsService {
 		return true;
 	}
 
+	private generate_accestoken(payload: any, currentDate: Date) {
+		const issued_at: number = currentDate.getTime();
+		const expires: number = this.generate_expiresin(currentDate);
+
+		payload = this.clean_before(JSON.stringify(payload));
+		const payload_data = { ...payload, exp: expires, ist: issued_at };
+		const encodedheader: string = this.encodetobase64(this.header);
+		const encodedpayload: string = this.encodetobase64(payload_data);
+		const signature: string = this.create_signature(
+			encodedheader,
+			encodedpayload,
+			this.secret,
+		);
+		const jwt = `${encodedheader}.${encodedpayload}.${signature}`;
+		return jwt;
+	}
+
+	private generate_refreshtoken(payload: any, currentDate: Date) {
+		currentDate.setTime(currentDate.getTime() + 30 * 60 * 1000);
+		const exp_refresh: number = currentDate.getTime();
+		const payload_refresh = { ...payload, exp: exp_refresh };
+		const vector = Buffer.from(this.refresh_id.normalize(), 'utf-8'); // crypto.randomBytes(16)
+		const iv = Buffer.from(this.refresh_iv.normalize(), 'utf-8'); // crypto.randomBytes(32)
+		const cipher = crypto.createCipheriv('aes-256-cbc', iv, vector);
+		const encrypted = cipher.update(
+			JSON.stringify(payload_refresh),
+			'utf-8',
+			'hex',
+		);
+		const payload_data = { rid: encrypted };
+		const encodedheader: string = this.encodetobase64(this.header);
+		const encodedpayload: string = this.encodetobase64(payload_data);
+		const signature: string = this.create_signature(
+			encodedheader,
+			encodedpayload,
+			this.secret,
+		);
+		const refresh = `${encodedheader}.${encodedpayload}.${signature}`;
+		return refresh;
+	}
+
 	private generate_expiresin(date: Date): number {
 		const exec_regex = this.regex_time_type.exec(this.exp_hours);
 		if (exec_regex) {
@@ -134,6 +172,7 @@ export class JwtfsService {
 		const signature_jwt: string = this.create_signature(
 			encodedheader,
 			encodedpayload,
+			this.secret,
 		);
 		if (signature_jwt === signature) {
 			return true;
@@ -160,9 +199,10 @@ export class JwtfsService {
 	private create_signature(
 		encodedheader: string,
 		encodedpayload: string,
+		secret: string,
 	): string {
 		const hash: string = crypto
-			.createHmac('SHA256', this.secret)
+			.createHmac('SHA256', secret)
 			.update(`${encodedheader}.${encodedpayload}`)
 			.digest('base64')
 			.replace(/\+/g, '_')

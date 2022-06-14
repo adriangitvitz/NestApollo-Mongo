@@ -1,6 +1,4 @@
-import {
-	Injectable,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { JwtfsService } from 'src/jwtfs/jwtfs.service';
@@ -50,11 +48,19 @@ export class UsersService {
 	}
 
 	async signIn(data: UsersInput): Promise<JwtCredentials> {
-		const { username } = data;
+		const { username, password } = data;
 		// const user: User = { ...data, id: '1' };
-		const jwtpayload: JwtPayload = { username };
-		const accesstoken: string = this.jwtfs.sign(jwtpayload);
-		const jwtdata: JwtCredentials = { accesstoken };
-		return jwtdata;
+		const user = await this.usermodel.findOne({ username: username });
+
+		if (user && (await bcrypt.compare(password, user.password))) {
+			const jwtpayload: JwtPayload = { username };
+			// const accesstoken: string = this.jwtfs.sign(jwtpayload);
+			const { accesstoken, refreshtoken } = this.jwtfs.signwithrefresh(jwtpayload);
+			const jwtdata: JwtCredentials = { accesstoken, refreshtoken };
+
+			return jwtdata;
+		} else {
+			throw new UnauthorizedException('Please check your credentails');
+		}
 	}
 }

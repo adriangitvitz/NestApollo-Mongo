@@ -24,6 +24,7 @@ type Query {
 """sigin"""
 type SignInCredentials {
   accesstoken: String!
+  refreshtoken: String!
 }
 
 type Usercreated {
