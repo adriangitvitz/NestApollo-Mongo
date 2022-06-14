@@ -19,7 +19,7 @@ export class JwtfsService {
 		const issued_at: number = currentDate.getTime();
 		const expires: number = this.generate_expiresin(currentDate);
 
-		payload = JSON.parse(JSON.stringify(payload));
+		payload = this.clean_before(payload);
 		const payload_data = { ...payload, exp: expires, ist: issued_at };
 		const encodedheader: string = this.encodetobase64(this.header);
 		const encodedpayload: string = this.encodetobase64(payload_data);
@@ -34,11 +34,12 @@ export class JwtfsService {
 	isvalid(jwt: string): boolean {
 		const { header_decoded, payload_decoded, signature } = this.decodedata(jwt);
 		const encodedheader: string = this.encodetobase64(
-			JSON.parse(header_decoded),
+			this.clean_before(header_decoded),
 		);
 		const encodedpayload: string = this.encodetobase64(
-			JSON.parse(payload_decoded),
+			this.clean_before(payload_decoded),
 		);
+		// TODO: Validate expiration date
 		const validate: boolean = this.validate(
 			encodedheader,
 			encodedpayload,
@@ -51,10 +52,10 @@ export class JwtfsService {
 		const { header_decoded, payload_decoded, signature } = this.decodedata(jwt);
 		if (options.validate) {
 			const encodedheader: string = this.encodetobase64(
-				JSON.parse(header_decoded),
+				this.clean_before(header_decoded),
 			);
 			const encodedpayload: string = this.encodetobase64(
-				JSON.parse(payload_decoded),
+				this.clean_before(payload_decoded),
 			);
 			const validate: boolean = this.validate(
 				encodedheader,
@@ -62,12 +63,40 @@ export class JwtfsService {
 				signature,
 			);
 			if (validate) {
-				return JSON.parse(JSON.stringify(payload_decoded));
+				return this.clean_before(payload_decoded);
 			} else {
 				throw new NotAcceptableException('JWT Invalid');
 			}
 		}
-		return JSON.parse(JSON.stringify(payload_decoded));
+		return this.clean_before(payload_decoded);
+	}
+
+	private clean_before(data: string) {
+		const validate_json: boolean = this.isJson(data);
+		if (validate_json) {
+			const data_parsed = JSON.parse(this.cleanstring(data.trim()));
+			return data_parsed;
+		}
+		throw new NotAcceptableException('JWT Invalid');
+	}
+
+	private cleanstring(data: string): string {
+		let output = '';
+		for (let i = 0; i < data.length; i++) {
+			if (data.charCodeAt(i) <= 127) {
+				output += data.charAt(i);
+			}
+		}
+		return output;
+	}
+
+	private isJson(data: string) {
+		try {
+			JSON.parse(data);
+		} catch (e) {
+			return false;
+		}
+		return true;
 	}
 
 	private generate_expiresin(date: Date): number {
