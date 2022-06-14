@@ -11,7 +11,7 @@ export class JwtfsService {
 		typ: 'JWT',
 	};
 	private readonly secret: string = this.configService.get<string>('jwtsecret');
-	private readonly refresh_id: string = this.configService.get<string>('refreshid'); // 16 char
+	private readonly refresh_secret: string = this.configService.get<string>('refreshid'); // 16 char
 	private readonly refresh_iv: string = this.configService.get<string>('refreshiv'); // 32 char
 	private readonly exp_hours: string = this.configService.get<string>('jwtexp');
 	private readonly regex_time_type: RegExp = new RegExp(/(\d+)([h-m])(&|$)/g);
@@ -117,7 +117,7 @@ export class JwtfsService {
 		currentDate.setTime(currentDate.getTime() + 30 * 60 * 1000);
 		const exp_refresh: number = currentDate.getTime();
 		const payload_refresh = { ...payload, exp: exp_refresh };
-		const vector = Buffer.from(this.refresh_id.normalize(), 'utf-8'); // crypto.randomBytes(16)
+		const vector = Buffer.from(this.refresh_secret.normalize(), 'utf-8'); // crypto.randomBytes(16)
 		const iv = Buffer.from(this.refresh_iv.normalize(), 'utf-8'); // crypto.randomBytes(32)
 		const cipher = crypto.createCipheriv('aes-256-cbc', iv, vector);
 		const encrypted = cipher.update(
