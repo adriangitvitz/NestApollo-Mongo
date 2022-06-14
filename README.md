@@ -8,6 +8,8 @@ This project uses a MongoDB Replica Set, a JWT custom implementation, that you c
 SECRET="SECRET"
 JWT_EXP="1h"
 MONGODB_URI=mongodb://localhost:27017,localhost:27018,localhost:27019/<database>
+REFRESH_ID="<16char>"
+REFRESH_IV="<32char>"
 ```
 
 **NOTE: JWT_EXP Field could be in hours (2h) or minutes (30m)**
